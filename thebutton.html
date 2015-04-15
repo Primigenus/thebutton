@@ -1,0 +1,63 @@
+<head>
+  <title>Build Your Own /r/thebutton</title>
+  <script src="https://www.google.com/jsapi"></script>
+  <script>google.load("visualization", "1", {packages:["corechart"]});</script>
+</head>
+
+<body>
+	<nav>
+		<h1>The Button</h1>
+
+		<div class="thebutton-participants">
+			{{numParticipants}} participants
+		</div>
+
+		{{> loginButtons align="right"}}
+	</nav>
+	{{> thebutton}}
+</body>
+
+<template name="thebutton">
+
+	<div class="thebutton-container">
+		<div class="thebutton-button">
+			{{#if currentUser}}
+				{{#if timeRemainingWhenClicked}}
+					You clicked on {{clicked}} with <span class="remaining-{{timeRemainingWhenClicked}}">{{timeRemainingWhenClicked}}s</span> remaining
+				{{else}}
+					{{#if timeRemaining}}
+						<button title="Click it!">Click me!</button>
+					{{else}}
+						<button disabled>[time's up!]</button>
+					{{/if}}
+				{{/if}}
+			{{else}}
+				{{#if timeRemaining}}
+					<button disabled title="Sign in to click me!">[locked]</button>
+				{{else}}
+					<button disabled>[time's up!]</button>
+				{{/if}}
+			{{/if}}
+		</div>
+		{{> piechart}}
+		{{> countdown}}
+	</div>
+
+</template>
+
+<template name="piechart">
+	<div>
+		<div class="thebutton-piechart-container">
+			<div class="thebutton-piechart"></div>
+		</div>
+	</div>
+</template>
+
+<template name="countdown">
+	<div class="thebutton-countdown">
+		<span class="countdown-60s">{{countdown60s}}</span>
+		<span class="countdown-10s">{{countdown10s}}</span>
+		<span class="countdown-100ms">{{countdown100ms}}</span>
+		<span class="countdown-10ms">{{countdown10ms}}</span>
+	</div>
+</template>
