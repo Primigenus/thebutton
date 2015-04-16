@@ -26,16 +26,16 @@
 					You clicked on {{clicked}} with <span class="remaining-{{timeRemainingWhenClicked}}">{{timeRemainingWhenClicked}}s</span> remaining
 				{{else}}
 					{{#if timeRemaining}}
-						<button title="Click it!">Click me!</button>
+						<button title="Click it!"></button>
 					{{else}}
-						<button disabled>[time's up!]</button>
+						<button disabled></button>
 					{{/if}}
 				{{/if}}
 			{{else}}
 				{{#if timeRemaining}}
-					<button disabled title="Sign in to click me!">[locked]</button>
+					<button disabled title="Sign in to click me!"></button>
 				{{else}}
-					<button disabled>[time's up!]</button>
+					<button disabled></button>
 				{{/if}}
 			{{/if}}
 		</div>
