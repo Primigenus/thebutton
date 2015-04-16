@@ -76,7 +76,7 @@ if (Meteor.isClient) {
     },
     clicked: function() {
       if (!Meteor.userId()) return;
-      return moment(Meteor.user().clicked).format("MMM DD \\a\\t HH:mm:ss");
+      return moment(Meteor.user().date).format("MMM DD \\a\\t HH:mm:ss");
     },
     timeRemaining: function() {
       return !Session.equals("timer", 0);
@@ -134,13 +134,13 @@ if (Meteor.isServer) {
     },
     reset: function() {
       Clicks.remove({});
-      Meteor.users.update({}, {$unset: {clicked: 1}}, {multi: true});
+      Meteor.users.update({}, {$unset: {date: 1}}, {multi: true});
       Timer.set(TIMER_INIT);
     }
   });
 
   Meteor.publish("userData", function() {
-    return Meteor.users.find({}, {fields: {clicked: 1}});
+    return Meteor.users.find({}, {fields: {date: 1}});
   })
 
   Meteor.users.allow({
