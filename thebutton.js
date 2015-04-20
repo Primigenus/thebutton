@@ -20,6 +20,8 @@ if (Meteor.isClient) {
           }, 10);
         }
       });
+      if (Session.equals("timerMs", 0))
+        Meteor.call("reset");
     }, 1000);
 
     google.setOnLoadCallback(function() {
@@ -56,7 +58,7 @@ if (Meteor.isClient) {
     numParticipants: function() {
       return Clicks.find().count();
     }
-  })
+  });
 
   Template.thebutton.helpers({
     timeRemainingWhenClicked: function() {
@@ -127,7 +129,7 @@ if (Meteor.isServer) {
       return timer;
     },
     reset: function() {
-      Clicks.remove({});
+      // Clicks.remove({});
       Meteor.users.update({}, {$unset: {date: 1}}, {multi: true});
       timer = TIMER_INIT;
     }
