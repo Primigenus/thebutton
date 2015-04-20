@@ -106,3 +106,9 @@ button:disabled {
 	width: 120px;
 	height: 120px;
 }
+
+.what-is-this {
+	width: 600px;
+	margin: 5rem auto 0 auto;
+	text-align: center;
+}
