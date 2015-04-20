@@ -130,7 +130,7 @@ if (Meteor.isServer) {
     },
     reset: function() {
       // Clicks.remove({});
-      Meteor.users.update({}, {$unset: {date: 1}}, {multi: true});
+      // Meteor.users.update({}, {$unset: {date: 1}}, {multi: true});
       timer = TIMER_INIT;
     }
   });
