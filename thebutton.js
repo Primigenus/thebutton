@@ -1,28 +1,29 @@
 Clicks = new Mongo.Collection("clicks");
+Timer = new Mongo.Collection("timer");
 var TIMER_INIT = 1000 * 60;
 
 if (Meteor.isClient) {
 
+  // We'll use this to update the pie chart more
+  // frequently (every 10ms) without hitting the server
+  var clientTimer = new ReactiveVar(TIMER_INIT);
+
   Meteor.startup(function() {
     Meteor.subscribe("userData");
     Meteor.subscribe("clicks");
+    Meteor.subscribe("timer");
 
-    Session.setDefault("timerMs", TIMER_INIT);
-
-    var timerMsInterval;
-    Meteor.setInterval(function updateTime() {
-      Meteor.call("getTimer", function(err, res) {
-        Session.set("timerMs", res);
-        clearInterval(timerMsInterval);
-        if (res > 0) {
-          timerMsInterval = Meteor.setInterval(function() {
-            Session.set("timerMs", Session.get("timerMs") - 10);
-          }, 10);
-        }
-      });
-      if (Session.equals("timerMs", 0))
-        Meteor.call("reset");
-    }, 1000);
+    var interval;
+    Tracker.autorun(function() {
+      var timer = Timer.findOne();
+      if (timer && timer.value > 0 && timer.value % 1000 == 0) {
+        clearInterval(interval);
+        clientTimer.set(timer.value);
+        interval = Meteor.setInterval(function() {
+          clientTimer.set(clientTimer.get() - 10);
+        }, 10);
+      }
+    });
 
     google.setOnLoadCallback(function() {
       var options = {
@@ -39,17 +40,17 @@ if (Meteor.isClient) {
       var chart = new google.visualization.PieChart($(".thebutton-piechart")[0]);
       chart.draw(google.visualization.arrayToDataTable([
         ['', ''],
-        ["gone", TIMER_INIT - Session.get("timerMs")],
-        ["remaining", Session.get("timerMs")]
+        ["gone", TIMER_INIT - clientTimer.get()],
+        ["remaining", clientTimer.get()]
       ]), options);
 
       Tracker.autorun(function() {
-        data = google.visualization.arrayToDataTable([
+        if (clientTimer.get() <= 0) return;
+        chart.draw(google.visualization.arrayToDataTable([
           ['', ''],
-          ["gone", TIMER_INIT - Session.get("timerMs")],
-          ["remaining", Session.get("timerMs")]
-        ]);
-        chart.draw(data, options);
+          ["gone", TIMER_INIT - clientTimer.get()],
+          ["remaining", clientTimer.get()]
+        ]), options);
       });
     });
   });
@@ -75,14 +76,15 @@ if (Meteor.isClient) {
       return moment(Meteor.user().date).format("MMM DD \\a\\t HH:mm:ss");
     },
     timeRemaining: function() {
-      return !Session.equals("timerMs", 0);
+      if (!Timer.findOne()) return;
+      return Timer.findOne().value > 0;
     }
   });
 
   Template.thebutton.events({
     'click button': function(evt) {
       if (!Meteor.user()) return;
-      var change = { timeRemaining: Session.get("timerMs"), date: new Date() };
+      var change = { timeRemaining: Timer.findOne().value, date: new Date() };
       var userId = { userId: Meteor.userId() };
 
       var click = Clicks.findOne(userId);
@@ -95,19 +97,23 @@ if (Meteor.isClient) {
 
   Template.countdown.helpers({
     countdown60s: function() {
-      var secs = Session.get("timerMs") / 1000;
+      if (!Timer.findOne()) return;
+      var secs = clientTimer.get() / 1000;
       return secs >= 10 ? String(secs)[0] : 0;
     },
     countdown10s: function() {
-      var secs = Session.get("timerMs") / 1000;
+      if (!Timer.findOne()) return;
+      var secs = clientTimer.get() / 1000;
       return secs >= 10 ? String(secs)[1] : String(secs)[0];
     },
     countdown100ms: function() {
-      var ms = Session.get("timerMs") % 1000;
+      if (!Timer.findOne()) return;
+      var ms = clientTimer.get() % 1000;
       return ms > 100 ? String(ms)[0] : 0;
     },
     countdown10ms: function() {
-      var ms = Session.get("timerMs") % 1000;
+      if (!Timer.findOne()) return;
+      var ms = clientTimer.get() % 1000;
       return ms > 100 ? String(ms)[1] : String(ms)[0];
     }
   });
@@ -116,43 +122,64 @@ if (Meteor.isClient) {
 
 if (Meteor.isServer) {
 
-  var timer = TIMER_INIT;
+  var serverTimer = TIMER_INIT;
 
   Meteor.startup(function() {
-    Meteor.setInterval(function() {
-      timer = Math.max(0, timer - 1000);
-    }, 1000);
+    var timer = Timer.findOne();
+    if (timer) {
+      Meteor.setInterval(function() {
+        Timer.update(timer._id, {$set: {value: serverTimer}});
+        serverTimer -= 1000;
+        if (Timer.findOne().value < 0) {
+          Timer.update(timer._id, {$set: {value: TIMER_INIT}});
+          serverTimer = TIMER_INIT;
+        }
+      }, 1000);
+    }
+    else
+      Timer.insert({value: TIMER_INIT});
   });
 
   Meteor.methods({
-    getTimer: function() {
-      return timer;
-    },
     reset: function() {
-      // Clicks.remove({});
-      // Meteor.users.update({}, {$unset: {date: 1}}, {multi: true});
-      timer = TIMER_INIT;
+      var timer = Timer.findOne();
+      if (timer) {
+        Timer.update(timer._id, {$set: {value: TIMER_INIT}});
+        serverTimer = TIMER_INIT;
+      }
+    }
+  });
+
+  Meteor.publish("timer", function() {
+    return Timer.find();
+  });
+
+  Timer.allow({
+    update: function(userId, doc) {
+      return true;
     }
   });
 
   Meteor.publish("userData", function() {
     return Meteor.users.find({}, {fields: {date: 1}});
-  })
+  });
 
   Meteor.users.allow({
     update: function(userId, doc) {
-      return timer > 0 && userId === doc._id;
+      return Timer.findOne().value > 0 && userId === doc._id;
     }
   });
 
   Meteor.publish("clicks", function() {
     return Clicks.find();
-  })
+  });
 
   Clicks.allow({
     insert: function(userId, doc) {
-      if (timer > 0 && userId === doc.userId) {
-        timer = TIMER_INIT;
+      if (serverTimer > 0 && userId === doc.userId) {
+        var timer = Timer.findOne();
+        Timer.update(timer._id, {$set: {value: TIMER_INIT}});
+        serverTimer = TIMER_INIT;
         return true;
       }
       return false;
