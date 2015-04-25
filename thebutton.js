@@ -122,9 +122,10 @@ if (Meteor.isClient) {
 
 if (Meteor.isServer) {
 
-  var serverTimer = TIMER_INIT;
+  var serverTimer;
 
   Meteor.startup(function() {
+    serverTimer = TIMER_INIT;
     var timer = Timer.findOne();
     if (timer) {
       Meteor.setInterval(function() {
@@ -152,12 +153,6 @@ if (Meteor.isServer) {
 
   Meteor.publish("timer", function() {
     return Timer.find();
-  });
-
-  Timer.allow({
-    update: function(userId, doc) {
-      return true;
-    }
   });
 
   Meteor.publish("userData", function() {
